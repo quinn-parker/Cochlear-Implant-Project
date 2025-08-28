@@ -176,7 +176,7 @@ docker run -v "$(pwd)/output:/output" -v "$(pwd)/your_audio_file.wav:/app/your_a
 
 ## 📄 Credits
 
--README.md was written by Quinn and Claude.ai
--Dockerfile was written by Quinn
--Python program was written by Quinn
--requirements.txt was written by Quinn
+- README.md was written by Quinn and Claude.ai
+- Dockerfile was written by Quinn
+- Python program was written by Quinn
+- requirements.txt was written by Quinn

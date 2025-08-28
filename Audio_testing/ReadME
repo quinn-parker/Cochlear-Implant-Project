@@ -1,0 +1,74 @@
+# Sound Viewer and Manipulator
+
+This project provides a simple tool to **visualize** and **manipulate** audio signals inside a Docker container.  
+It uses [librosa](https://librosa.org), [matplotlib](https://matplotlib.org), and [soundfile](https://pysoundfile.readthedocs.io) to analyze audio, generate plots, and save manipulated audio files.
+
+---
+
+## Features
+- Load an audio file (`.wav` by default).
+- Generate and save:
+  - **Waveform plots**
+  - **Spectrograms**
+- Apply a simple **echo effect** to the audio.
+- Save the processed audio and plots into the `output` directory.
+
+---
+
+## Project Structure
+```
+.
+├── Dockerfile
+├── requirements.txt
+├── SoundViewerAndManipulator.py
+└── output/               # Generated plots and audio will be saved here
+```
+
+---
+
+## Requirements
+- **Docker** installed on your system.
+- A `requirements.txt` file with at least:
+  ```
+  librosa
+  matplotlib
+  numpy
+  soundfile
+  ```
+- An input `.wav` file in the project root, e.g. `your_audio_file.wav`.
+
+---
+
+## Usage
+
+### 1. Build the Docker image
+```bash
+docker build -t sound-tool .
+```
+
+### 2. Run the container
+```bash
+docker run --rm -v $(pwd)/output:/output sound-tool
+```
+
+This mounts your local `output` directory into the container so plots and processed audio are accessible outside Docker.
+
+---
+
+## Output
+After running, the following files will be in the `output/` directory:
+- `original_waveform.png`
+- `original_spectrogram.png`
+- `echo_waveform.png`
+- `audio_with_echo.wav`
+
+---
+
+## Notes
+- Replace `your_audio_file.wav` with the actual filename of the audio file you want to analyze.
+- You can experiment with different manipulations (e.g., filters, pitch shifting) by modifying `SoundViewerAndManipulator.py`.
+
+---
+
+## License
+This project is provided as-is under the MIT License.

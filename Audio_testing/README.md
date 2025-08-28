@@ -190,6 +190,9 @@ docker run -v "$(pwd)/output:/output" -v "$(pwd)/your_audio_file.wav:/app/your_a
 4. Test with various audio files
 5. Submit a pull request
 
-## 📄 License
+## 📄 Credits
 
-This project is open source and available under the MIT License.
+README.md was written by Quinn and Claude.ai
+Dockerfile was written by Quinn
+Python program was written by Quinn
+requirements.txt was written by Quinn

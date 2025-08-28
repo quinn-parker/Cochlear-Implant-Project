@@ -174,25 +174,9 @@ docker logs <container_id>
 docker run -v "$(pwd)/output:/output" -v "$(pwd)/your_audio_file.wav:/app/your_audio_file.wav" audio-processor python -u SoundViewerAndManipulator.py
 ```
 
-## 💡 Customization Ideas
-
-- **Add different audio effects**: Reverb, pitch shifting, time stretching
-- **Batch processing**: Process multiple audio files
-- **Interactive parameters**: Use command-line arguments for effect settings
-- **Additional visualizations**: Mel spectrograms, chromagrams, tempo analysis
-- **Audio analysis**: Extract features like tempo, key, loudness
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with various audio files
-5. Submit a pull request
-
 ## 📄 Credits
 
-README.md was written by Quinn and Claude.ai
-Dockerfile was written by Quinn
-Python program was written by Quinn
-requirements.txt was written by Quinn
+-README.md was written by Quinn and Claude.ai
+-Dockerfile was written by Quinn
+-Python program was written by Quinn
+-requirements.txt was written by Quinn

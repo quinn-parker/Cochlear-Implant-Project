@@ -4,9 +4,27 @@ Firmware for the nRF54L15 for the Cochlear Implant Project (bone conduction hear
 
 ## Applications
 
-This project contains two applications:
+This project contains three applications:
 
-### 1. FFT Waveform Analyzer v1.0 (Default)
+### 1. Hearing Aid DSP Processor (Default)
+
+Advanced DSP signal processor that mimics hearing aid audio processing. Receives noisy audio via serial, processes it through a complete hearing aid pipeline, and returns the cleaned signal.
+
+**Features:**
+- **Spectral Noise Reduction**: Wiener filtering + spectral subtraction
+- **Multi-band Dynamic Range Compression (WDRC)**: 8-band compression with configurable thresholds
+- **Automatic Gain Control (AGC)**: Adaptive output level management
+- **High-frequency Emphasis**: Compensates for typical hearing loss patterns
+- **Noise Gate**: Reduces low-level noise
+- **Overlap-Add Synthesis**: Smooth, artifact-free output
+- Serial protocol for sending/receiving 16-bit audio samples
+
+**DSP Pipeline:**
+```
+Input → FFT → Noise Reduction → Noise Gate → WDRC → HF Emphasis → IFFT → AGC → Output
+```
+
+### 2. FFT Waveform Analyzer v1.0
 
 Real-time FFT spectrum analyzer that processes waveforms (songs with noise) and displays frequency analysis on the console.
 
@@ -74,7 +92,7 @@ The IM69D129F L/R pin determines which clock edge the data is valid on:
 
 ## Building
 
-### Building FFT Waveform Analyzer (Default)
+### Building Hearing Aid DSP Processor (Default)
 
 ```bash
 # Set up environment (if not already done)
@@ -83,18 +101,25 @@ source ~/ncs/zephyr/zephyr-env.sh
 # Navigate to project directory
 cd nRF54L15
 
-# Build FFT Waveform Analyzer for nRF54L15-DK
+# Build Hearing Aid DSP for nRF54L15-DK
 west build -b nrf54l15dk/nrf54l15/cpuapp
 
 # Flash to device
 west flash
 ```
 
+### Building FFT Waveform Analyzer
+
+```bash
+# Build FFT Analyzer instead
+west build -b nrf54l15dk/nrf54l15/cpuapp -- -DBUILD_APP=fft_analyzer
+```
+
 ### Building PDM Microphone Test
 
 ```bash
-# Build with BUILD_FFT_ANALYZER=OFF to build PDM test instead
-west build -b nrf54l15dk/nrf54l15/cpuapp -- -DBUILD_FFT_ANALYZER=OFF
+# Build PDM test instead
+west build -b nrf54l15dk/nrf54l15/cpuapp -- -DBUILD_APP=pdm_test
 ```
 
 ### VS Code with nRF Connect Extension
@@ -102,11 +127,116 @@ west build -b nrf54l15dk/nrf54l15/cpuapp -- -DBUILD_FFT_ANALYZER=OFF
 1. Open the `nRF54L15` folder in VS Code
 2. Click "Add Build Configuration" in the nRF Connect extension
 3. Select board: `nrf54l15dk/nrf54l15/cpuapp`
-4. (Optional) Add CMake argument `-DBUILD_FFT_ANALYZER=OFF` for PDM test
+4. (Optional) Add CMake argument to select application:
+   - `-DBUILD_APP=hearing_aid_dsp` (default)
+   - `-DBUILD_APP=fft_analyzer`
+   - `-DBUILD_APP=pdm_test`
 5. Click "Build"
 6. Click "Flash"
 
 ## Usage
+
+### Hearing Aid DSP Processor
+
+The Hearing Aid DSP processor receives noisy audio via serial, applies hearing aid-style processing, and returns the cleaned signal.
+
+#### Serial Commands
+
+| Key | Action |
+|-----|--------|
+| `P` | Process audio (followed by length + sample data) |
+| `T` | Generate and process internal test signal |
+| `S` | Show DSP status |
+| `C` | Show compression band settings |
+| `H` | Show help menu |
+
+#### Serial Protocol
+
+**Input Format:**
+```
+'P' + len_low + len_high + samples (16-bit signed, little-endian)
+```
+
+**Output Format:**
+```
+'R' + len_low + len_high + processed_samples (16-bit signed, little-endian)
+```
+
+#### Using the Python Tool
+
+A Python companion script is provided in `tools/hearing_aid_serial.py`:
+
+```bash
+# Install dependencies
+pip install pyserial scipy numpy
+
+# List available serial ports
+python tools/hearing_aid_serial.py --list
+
+# Process a WAV file
+python tools/hearing_aid_serial.py -p /dev/ttyACM0 -i noisy_audio.wav -o clean_audio.wav
+
+# Generate and process a test signal
+python tools/hearing_aid_serial.py -p /dev/ttyACM0 --test
+
+# Interactive mode
+python tools/hearing_aid_serial.py -p /dev/ttyACM0 --interactive
+```
+
+#### Manual Serial Communication (Python)
+
+```python
+import serial
+import struct
+import numpy as np
+
+# Connect to nRF54L15
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+
+# Your noisy audio as int16 array (max 2048 samples)
+noisy_audio = np.array([...], dtype=np.int16)
+
+# Send process command
+ser.write(b'P')
+ser.write(struct.pack('<H', len(noisy_audio) * 2))  # Length in bytes
+ser.write(noisy_audio.tobytes())
+
+# Wait for response
+response_header = ser.read(1)  # Should be 'R'
+response_len = struct.unpack('<H', ser.read(2))[0]
+clean_audio = np.frombuffer(ser.read(response_len), dtype=np.int16)
+
+ser.close()
+```
+
+#### DSP Processing Details
+
+The hearing aid DSP applies these processing stages:
+
+1. **FFT Analysis**: 256-point FFT with sqrt-Hann window
+2. **Noise Estimation**: First 10 frames used to estimate noise floor
+3. **Wiener Filter**: SNR-based gain calculation per frequency bin
+4. **Spectral Subtraction**: Removes estimated noise with over-subtraction
+5. **Noise Gate**: Attenuates bins below -50 dB threshold
+6. **8-Band WDRC**: Compression bands at 125/250/500/1k/2k/3k/5k/7k Hz
+7. **High-Frequency Emphasis**: +3dB/octave above 1.5 kHz
+8. **IFFT + Overlap-Add**: Synthesis with 50% overlap
+9. **AGC**: Target output level of -12 dBFS
+
+#### Compression Band Settings
+
+| Band | Center Freq | Threshold | Ratio | Gain |
+|------|-------------|-----------|-------|------|
+| 1    | 125 Hz      | -40 dB    | 1.5:1 | +6 dB |
+| 2    | 250 Hz      | -40 dB    | 1.8:1 | +3 dB |
+| 3    | 500 Hz      | -35 dB    | 2.0:1 | 0 dB |
+| 4    | 1000 Hz     | -35 dB    | 2.5:1 | 0 dB |
+| 5    | 2000 Hz     | -30 dB    | 3.0:1 | +3 dB |
+| 6    | 3000 Hz     | -30 dB    | 3.0:1 | +6 dB |
+| 7    | 5000 Hz     | -30 dB    | 2.5:1 | +6 dB |
+| 8    | 7000 Hz     | -35 dB    | 2.0:1 | +3 dB |
+
+---
 
 ### FFT Waveform Analyzer
 
@@ -237,6 +367,17 @@ Level: [====================            ] 890
 
 ## Configuration
 
+### Hearing Aid DSP Parameters (`src/hearing_aid_dsp.c`)
+
+| Parameter                | Default | Description                           |
+|--------------------------|---------|---------------------------------------|
+| `SAMPLE_RATE_HZ`         | 16000   | Sample rate (Hz)                     |
+| `FFT_SIZE`               | 256     | FFT size (samples)                   |
+| `HOP_SIZE`               | 128     | Overlap-add hop size (50% overlap)   |
+| `NUM_COMPRESSION_BANDS`  | 8       | Number of WDRC bands                 |
+| `MAX_INPUT_SAMPLES`      | 2048    | Maximum input buffer size            |
+| `NOISE_ESTIMATE_FRAMES`  | 10      | Frames for initial noise estimation  |
+
 ### FFT Waveform Analyzer Parameters (`src/fft_waveform_v1.c`)
 
 | Parameter           | Default | Description                           |
@@ -280,26 +421,54 @@ Level: [====================            ] 890
 
 ## Next Steps
 
-After verifying microphone input works:
-1. Implement DSP processing (filtering, noise reduction)
+1. ✅ Implement DSP processing (filtering, noise reduction) - **DONE**
 2. Add audio output via I2S to MAX98502
 3. Optimize for low latency (<10ms)
 4. Add power management integration with nPM1300
+5. Integrate PDM microphone input with DSP pipeline
+6. Add real-time streaming mode
 
 ## Project Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌────────────┐
-│  PDM MEMS   │────▶│   nRF54L15   │────▶│  MAX98502   │────▶│ Transducer │
-│ Microphone  │     │  (DSP/MCU)   │     │  Class D    │     │   (Bone    │
-│             │     │              │     │  Amplifier  │     │ Conduction)│
-└─────────────┘     └──────────────┘     └─────────────┘     └────────────┘
-                           │
-                           │
-                    ┌──────▼──────┐
-                    │   nPM1300   │
-                    │    PMIC     │
-                    └─────────────┘
+┌─────────────┐     ┌──────────────────────────────────────┐     ┌─────────────┐
+│  PDM MEMS   │────▶│              nRF54L15                │────▶│  MAX98502   │
+│ Microphone  │     │                                      │     │  Class D    │
+│             │     │  ┌────────────────────────────────┐  │     │  Amplifier  │
+└─────────────┘     │  │     Hearing Aid DSP Pipeline   │  │     └─────────────┘
+                    │  │                                │  │            │
+      OR            │  │  FFT → Noise Reduction →       │  │            ▼
+                    │  │  Compression → HF Emphasis →   │  │     ┌────────────┐
+┌─────────────┐     │  │  IFFT → AGC                    │  │     │ Transducer │
+│ Serial/UART │────▶│  │                                │  │     │   (Bone    │
+│   Input     │     │  └────────────────────────────────┘  │     │ Conduction)│
+└─────────────┘     └──────────────────────────────────────┘     └────────────┘
+                                    │
+                    ┌───────────────┴───────────────┐
+                    │           nPM1300             │
+                    │            PMIC               │
+                    └───────────────────────────────┘
+```
+
+### DSP Processing Flow
+
+```
+┌─────────┐   ┌─────────┐   ┌─────────────┐   ┌───────────┐   ┌──────────┐
+│ Input   │──▶│  FFT    │──▶│   Noise     │──▶│  Noise    │──▶│  8-Band  │
+│ Buffer  │   │ (256pt) │   │ Estimation  │   │  Gate     │   │   WDRC   │
+└─────────┘   └─────────┘   └─────────────┘   └───────────┘   └──────────┘
+                                    │                               │
+                                    ▼                               ▼
+                            ┌─────────────┐                   ┌──────────┐
+                            │   Wiener    │                   │   HF     │
+                            │   Filter    │                   │ Emphasis │
+                            └─────────────┘                   └──────────┘
+                                    │                               │
+                                    ▼                               ▼
+                            ┌─────────────┐   ┌─────────┐   ┌──────────┐
+                            │  Spectral   │──▶│  IFFT   │──▶│   AGC    │──▶ Output
+                            │Subtraction  │   │         │   │          │
+                            └─────────────┘   └─────────┘   └──────────┘
 ```
 
 ## License

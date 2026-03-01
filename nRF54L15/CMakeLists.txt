@@ -1,18 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
-# Cochlear Implant Project - FFT Waveform Analyzer v1.0
+# Cochlear Implant Project - DSP Applications
 # Target: nRF54L15
 
 cmake_minimum_required(VERSION 3.20.0)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(fft_waveform_analyzer)
+project(cochlear_implant_dsp)
 
 # Build option: select which application to build
-# Set BUILD_FFT_ANALYZER=ON to build the FFT waveform analyzer (default)
-# Set BUILD_FFT_ANALYZER=OFF to build the original PDM microphone test
-option(BUILD_FFT_ANALYZER "Build FFT Waveform Analyzer instead of PDM test" ON)
+# BUILD_APP options:
+#   "hearing_aid_dsp" - Hearing Aid DSP Signal Processor (default)
+#   "fft_analyzer"    - FFT Waveform Analyzer
+#   "pdm_test"        - PDM Microphone Test
+set(BUILD_APP "hearing_aid_dsp" CACHE STRING "Application to build")
+set_property(CACHE BUILD_APP PROPERTY STRINGS "hearing_aid_dsp" "fft_analyzer" "pdm_test")
 
-if(BUILD_FFT_ANALYZER)
+if(BUILD_APP STREQUAL "hearing_aid_dsp")
+    message(STATUS "Building Hearing Aid DSP Processor")
+    target_sources(app PRIVATE
+        src/hearing_aid_dsp.c
+    )
+elseif(BUILD_APP STREQUAL "fft_analyzer")
     message(STATUS "Building FFT Waveform Analyzer v1.0")
     target_sources(app PRIVATE
         src/fft_waveform_v1.c
@@ -24,5 +32,5 @@ else()
     )
 endif()
 
-# Math library for FFT calculations
+# Math library for FFT/DSP calculations
 target_link_libraries(app PRIVATE m)

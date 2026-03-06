@@ -1,0 +1,45 @@
+name: audiologist_app
+description: Clinical hearing aid fitting tool - 12-channel WDRC, audiogram auto-fit, BLE/serial
+
+publish_to: 'none'
+
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI Components
+  cupertino_icons: ^1.0.6
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Bluetooth Low Energy for device communication
+  flutter_blue_plus: ^1.31.0
+  
+  # Charts for frequency response visualization
+  fl_chart: ^0.66.0
+  
+  # Local storage for saving presets
+  shared_preferences: ^2.2.2
+  
+  # File handling for import/export
+  file_picker: ^6.1.1
+  path_provider: ^2.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  # Asset folders (create these as needed)
+  # assets:
+  #   - assets/images/
+  #   - assets/presets/

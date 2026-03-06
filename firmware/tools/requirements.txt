@@ -1,0 +1,5 @@
+# Hearing Aid Serial Tool - Python dependencies
+# Install: pip install -r requirements.txt
+numpy
+pyserial
+scipy
